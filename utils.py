@@ -13,6 +13,47 @@ import seaborn as sns
 import torch
 from sklearn.metrics import confusion_matrix
 
+@torch.no_grad()
+def eval_test(model, loader, device):
+    model.eval()
+    y_true, y_pred = [], []
+    for x, y in loader:
+        x = x.to(device)
+        y = y.to(device).squeeze().long()
+        logits = model(x)
+        pred = torch.argmax(logits, dim=1)
+        y_true.extend(y.cpu().numpy())
+        y_pred.extend(pred.cpu().numpy())
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+    acc = (y_true == y_pred).mean()
+    cm = confusion_matrix(y_true, y_pred)
+    return acc, cm
+
+def evaluate_test_accuracy(model, test_loader, device):
+    # 1. Passage en mode évaluation
+    model.eval()
+    
+    correct = 0
+    total = 0
+    
+    # 2. On désactive le calcul des gradients (important !)
+    with torch.no_grad():
+        for data, target in test_loader:
+            data, target = data.to(device), target.to(device)
+            
+            # Forward pass
+            outputs = model(data)
+            
+            # On récupère l'indice de la classe avec la plus haute probabilité
+            _, predicted = torch.max(outputs.data, 1)
+            
+            total += target.size(0)
+            correct += (predicted.view(-1) == target.view(-1)).sum().item()
+
+    accuracy = 100 * correct / total
+    return accuracy
+
 def display_medmnist_samples(dataset, class_filter=None, n_samples=5):
     """
     Displays images from a MedMNIST dataset object.
