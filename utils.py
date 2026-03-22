@@ -271,7 +271,10 @@ def plot_confusion_matrix(model, test_loader, device, class_names):
             preds = outputs.argmax(dim=1)
             
             all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(labels.numpy().flatten())
+            all_labels.extend(labels.view(-1).cpu().numpy())
+
+    if isinstance(class_names, dict):
+        class_names = [class_names[str(i)] for i in range(len(class_names))]
     
     # Compute Matrix
     cm = confusion_matrix(all_labels, all_preds)
