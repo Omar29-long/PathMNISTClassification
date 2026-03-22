@@ -12,6 +12,38 @@ import plotly.express as px
 import seaborn as sns
 import torch
 from sklearn.metrics import confusion_matrix
+# Calcul Grad-CAM
+
+def compute_gradcam(model, image_tensor, class_idx=None):
+    global activations, gradients
+
+    model.eval()
+    activations = None
+    gradients = None
+
+    output = model(image_tensor)
+
+    if class_idx is None:
+        class_idx = output.argmax(dim=1).item()
+
+    score = output[:, class_idx]
+    model.zero_grad()
+    score.backward(retain_graph=True)
+
+    # moyenne des gradients par canal
+    weights = gradients.mean(dim=(2, 3), keepdim=True)
+
+    # combinaison pondérée des activations
+    cam = (weights * activations).sum(dim=1, keepdim=True)
+
+    # ReLU
+    cam = torch.relu(cam)
+
+    # normalisation
+    cam = cam.squeeze().detach().cpu().numpy()
+    cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
+
+    return cam, class_idx, output.detach().cpu()
 
 @torch.no_grad()
 def eval_test(model, loader, device):
